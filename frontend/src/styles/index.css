@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-size: 17px;
+}
+
+body {
+  @apply bg-warm-bg text-gray-800 font-sans antialiased;
+}
+
+/* WCAG AA-friendly focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid #0F6E56;
+  outline-offset: 2px;
+}
