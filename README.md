@@ -4,7 +4,7 @@ A full-stack MERN app that lets patients and caregivers track every medication i
 
 Two AI features are core to the product:
 
-- **AI Prescription Label Scanner** — photograph a label, Claude's vision reads it, you confirm before saving.
+- **AI Prescription Label Scanner** — photograph a label, Gemini's vision reads it, you confirm before saving.
 - **AI Risk Explainer** — turns a bare severity flag into a plain-language explanation + questions for your doctor.
 
 All AI content is clearly labeled "AI-generated — not medical advice" and uses hedged language ("potential interaction," "discuss with your doctor") — never diagnostic or directive language.
@@ -19,7 +19,7 @@ medguard-ai/
 
 - Node.js 18+ and npm — [nodejs.org](https://nodejs.org)
 - A MongoDB Atlas free-tier cluster — [mongodb.com/cloud/atlas](https://mongodb.com/cloud/atlas) (or a local MongoDB install)
-- An Anthropic API key for the two AI features — [console.anthropic.com](https://console.anthropic.com) (the app runs fine without one — see [Section 4](#4-running-without-an-ai-key-graceful-degradation))
+- A Google AI (Gemini) API key for the two AI features — [aistudio.google.com](https://aistudio.google.com) (the app runs fine without one — see [Section 4](#4-running-without-an-ai-key-graceful-degradation))
 - Optional: a Cloudinary free account for storing scanned label photos in production — [cloudinary.com](https://cloudinary.com)
 
 ## 2. Local setup
@@ -46,7 +46,7 @@ Open `.env` and fill in:
 |---|---|
 | `MONGO_URI` | the connection string from 2.1 |
 | `JWT_SECRET` | any long random string (e.g. `openssl rand -hex 32`) |
-| `ANTHROPIC_API_KEY` | your Claude API key (optional, see Section 4) |
+| `GEMINI_API_KEY` | your Google AI (Gemini) API key (optional, see Section 4) |
 | Cloudinary vars | optional for local dev — falls back to local disk storage |
 
 Seed the interaction reference database (~30 known drug-interaction pairs the interaction engine checks against):
@@ -100,7 +100,7 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 - **Auth & roles** — Register as a patient and as a caregiver (two accounts, two browsers/incognito windows). Confirm you can log in/out and that a caregiver sees a "no patient selected" state until linked.
 - **Add a medication** — As the patient, go to Medications → Add medication. Add Warfarin 5mg once daily, then Aspirin 81mg once daily. After the second save you should see a toast that a new interaction was flagged.
 - **Interaction engine** — Go to Interactions. You should see a Warfarin + Aspirin card with a Severe badge. Matching is case-insensitive in either direction — try `warfarin` (lowercase) and `ASPIRIN` (uppercase) as a second test.
-- **AI Risk Explainer** — Tap the interaction card to expand it. With `ANTHROPIC_API_KEY` set, you'll see a generated explanation + 3–4 doctor questions after a short loading state, cached so it won't regenerate on next load. Without a key, you'll see the static reference description and a note that AI is unavailable.
+- **AI Risk Explainer** — Tap the interaction card to expand it. With `GEMINI_API_KEY` set, you'll see a generated explanation + 3–4 doctor questions after a short loading state, cached so it won't regenerate on next load. Without a key, you'll see the static reference description and a note that AI is unavailable.
 - **AI Prescription Scanner** — Go to Scan a Label, upload a photo of any pill bottle/prescription label. With an API key set, fields pre-fill with a confidence indicator; without one, you're prompted to enter fields manually. Either way, nothing saves until you tap Confirm & save.
 - **Caregiver mode** — As the patient, go to Caregivers → Generate invite code. Log in as the caregiver, go to Caregivers, paste the code into Link patient. Switch to the caregiver's dashboard and use the patient switcher to view the patient's data. Confirm a view-permission caregiver cannot edit/delete medications (buttons hidden, and the API rejects edits with 403).
 - **Doctor-visit report** — Go to Doctor Report → Download PDF report. Confirm it lists current medications and active flagged interactions with their AI explanations/doctor questions and the "AI-generated — not medical advice" framing.
@@ -119,14 +119,14 @@ curl -s http://localhost:5000/api/medications -H "Authorization: Bearer $TOKEN"
 
 ## 4. Running without an AI key (graceful degradation)
 
-The app is fully functional with `ANTHROPIC_API_KEY` left blank:
+The app is fully functional with `GEMINI_API_KEY` left blank:
 
 - The interaction engine still runs (it's a static database lookup, not AI).
 - The risk explainer falls back to the static `InteractionReference.description`.
 - The label scanner returns empty fields and prompts manual entry.
 - Nothing crashes or blocks the UI.
 
-To turn AI features on, add your key from console.anthropic.com to `backend/.env` and restart the backend. Both features use the same key via Claude's text and vision capabilities.
+To turn AI features on, add your key from aistudio.google.com to `backend/.env` and restart the backend. Both features call the Gemini Flash model by default, with an automatic fallback to a second Gemini model if the primary call fails.
 
 ## 5. Deployment (free-tier friendly)
 
@@ -135,7 +135,7 @@ To turn AI features on, add your key from console.anthropic.com to `backend/.env
 1. Push this repo to GitHub.
 2. On Render: New → Web Service, connect the repo, set Root Directory to `backend`.
 3. Build command: `npm install`. Start command: `npm start`.
-4. Add all environment variables from `backend/.env.example` (real Atlas URI, JWT secret, Anthropic key, Cloudinary creds).
+4. Add all environment variables from `backend/.env.example` (real Atlas URI, JWT secret, Gemini key, Cloudinary creds).
 5. Set `CLIENT_URL` to your deployed frontend URL (CORS) and `PUBLIC_BACKEND_URL` to your Render URL (only needed for local-disk upload fallback — use Cloudinary in production, since Render/Railway free-tier disks are ephemeral).
 6. After first deploy, run the seed scripts once via the platform's shell tab: `npm run seed && npm run seed:demo`.
 
@@ -164,7 +164,7 @@ backend/
     middleware/                JWT auth, patient-context/access-control, multer upload
     routes/ + controllers/     REST API (auth, medications, interactions, caregiver, reports)
     services/
-      aiService.js              Claude text (explainer) + vision (scanner) calls
+      aiService.js              Gemini text (explainer) + vision (scanner) calls, with automatic fallback model
       interactionEngine.js      Case-insensitive A-B/B-A interaction matching
       storageService.js         Cloudinary upload w/ local-disk fallback
       pdfService.js             PDFKit doctor-visit report generator
