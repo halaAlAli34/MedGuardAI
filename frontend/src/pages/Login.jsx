@@ -49,11 +49,7 @@ export default function Login() {
           Don't have an account? <Link to="/register" className="text-teal font-semibold">Sign up</Link>
         </p>
 
-        <div className="mt-6 bg-teal-50 rounded-xl p-3.5 text-xs text-teal-800">
-          <p className="font-semibold mb-1">Demo credentials (after running the demo seed script)</p>
-          <p>Patient: patient@demo.com / Password123!</p>
-          <p>Caregiver: caregiver@demo.com / Password123!</p>
-        </div>
+        
       </div>
     </div>
   );
